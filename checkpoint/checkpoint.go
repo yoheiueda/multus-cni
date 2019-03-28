@@ -21,7 +21,6 @@ import (
 
 	"github.com/intel/multus-cni/logging"
 	"github.com/intel/multus-cni/types"
-	v1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -46,18 +45,22 @@ type Data struct {
 	Checksum uint64
 }
 
+type Checkpoint interface {
+	// GetComputeDeviceMap returns an instance of a map of ResourceInfo for a PodID
+	GetComputeDeviceMap(string) (map[string]*types.ResourceInfo, error)
+}
 type checkpoint struct {
 	fileName   string
 	podEntires []PodDevicesEntry
 }
 
 // GetCheckpoint returns an instance of Checkpoint
-func GetCheckpoint() (types.ResourceClient, error) {
+func GetCheckpoint() (Checkpoint, error) {
 	logging.Debugf("GetCheckpoint(): invoked")
 	return getCheckpoint(checkPointfile)
 }
 
-func getCheckpoint(filePath string) (types.ResourceClient, error) {
+func getCheckpoint(filePath string) (Checkpoint, error) {
 	cp := &checkpoint{fileName: filePath}
 	err := cp.getPodEntries()
 	if err != nil {
@@ -86,12 +89,12 @@ func (cp *checkpoint) getPodEntries() error {
 }
 
 // GetComputeDeviceMap returns an instance of a map of ResourceInfo
-func (cp *checkpoint) GetPodResourceMap(pod *v1.Pod) (map[string]*types.ResourceInfo, error) {
-	podID := string(pod.UID)
+func (cp *checkpoint) GetComputeDeviceMap(podID string) (map[string]*types.ResourceInfo, error) {
+
 	resourceMap := make(map[string]*types.ResourceInfo)
 
 	if podID == "" {
-		return nil, logging.Errorf("GetPodResourceMap(): invalid Pod cannot be empty")
+		return nil, logging.Errorf("GetComputeDeviceMap(): invalid Pod cannot be empty")
 	}
 
 	for _, pod := range cp.podEntires {

@@ -128,7 +128,6 @@ func (h *Handle) NeighDel(neigh *Neigh) error {
 
 func neighHandle(neigh *Neigh, req *nl.NetlinkRequest) error {
 	var family int
-
 	if neigh.Family > 0 {
 		family = neigh.Family
 	} else {
@@ -152,10 +151,7 @@ func neighHandle(neigh *Neigh, req *nl.NetlinkRequest) error {
 	dstData := nl.NewRtAttr(NDA_DST, ipData)
 	req.AddData(dstData)
 
-	if neigh.LLIPAddr != nil {
-		llIPData := nl.NewRtAttr(NDA_LLADDR, neigh.LLIPAddr.To4())
-		req.AddData(llIPData)
-	} else if neigh.Flags != NTF_PROXY || neigh.HardwareAddr != nil {
+	if neigh.Flags != NTF_PROXY || neigh.HardwareAddr != nil {
 		hwData := nl.NewRtAttr(NDA_LLADDR, []byte(neigh.HardwareAddr))
 		req.AddData(hwData)
 	}
@@ -241,33 +237,12 @@ func NeighDeserialize(m []byte) (*Neigh, error) {
 		return nil, err
 	}
 
-	// This should be cached for perfomance
-	// once per table dump
-	link, err := LinkByIndex(neigh.LinkIndex)
-	if err != nil {
-		return nil, err
-	}
-	encapType := link.Attrs().EncapType
-
 	for _, attr := range attrs {
 		switch attr.Attr.Type {
 		case NDA_DST:
 			neigh.IP = net.IP(attr.Value)
 		case NDA_LLADDR:
-			// BUG: Is this a bug in the netlink library?
-			// #define RTA_LENGTH(len) (RTA_ALIGN(sizeof(struct rtattr)) + (len))
-			// #define RTA_PAYLOAD(rta) ((int)((rta)->rta_len) - RTA_LENGTH(0))
-			attrLen := attr.Attr.Len - syscall.SizeofRtAttr
-			if attrLen == 4 && (encapType == "ipip" ||
-				encapType == "sit" ||
-				encapType == "gre") {
-				neigh.LLIPAddr = net.IP(attr.Value)
-			} else if attrLen == 16 &&
-				encapType == "tunnel6" {
-				neigh.IP = net.IP(attr.Value)
-			} else {
-				neigh.HardwareAddr = net.HardwareAddr(attr.Value)
-			}
+			neigh.HardwareAddr = net.HardwareAddr(attr.Value)
 		}
 	}
 
