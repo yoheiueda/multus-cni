@@ -7,7 +7,7 @@ jobs:
     env:
       DOCKER_CLI_EXPERIMENTAL: enabled
       GO111MODULE: on
-      REPOSITORY: nfvpe/multus
+      REPOSITORY: yoheiueda/multus
     steps:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
